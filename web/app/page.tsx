@@ -50,9 +50,27 @@ function DatabaseTable({databases}:{databases:DbBackup[]}) {
     {databases.map(db=>{const [label,tone]=backupAge(db.lastLog,2); return <tr key={db.name}><td className="name">{db.name}</td><td><span className={'pill '+(db.state==='ONLINE'?'good':'bad')}>{db.state}</span></td><td>{db.recovery}</td><td>{fmt(db.lastFull)}</td><td>{fmt(db.lastLog)}</td><td><span className={'pill '+(db.state==='ONLINE'?tone:'muted')}>{db.state==='ONLINE'?label:'N/A'}</span></td></tr>;})}
     {databases.length===0&&<tr><td colSpan={6} className="table-empty">No database data received</td></tr>}
   </tbody></table></div>;
+
+}
+function formatLogLine(line: unknown): string {
+  if (typeof line === 'string') return line;
+
+  if (line === null || line === undefined) return '';
+
+  if (typeof line === 'object') {
+    const obj = line as Record<string, unknown>;
+
+    if (typeof obj.value === 'string') {
+      return obj.value;
+    }
+
+    return JSON.stringify(obj);
+  }
+
+  return String(line);
 }
 function ArtifactsAndLogs({server}:{server:ServerSnapshot}) {
-  return <div className="bottom-grid"><section className="panel"><h3>Recent Backup Artifacts</h3><p>Latest local ZIP files reported by the Agent</p>{server.snapshot.artifacts.map(file=><div className="artifact" key={file.name}><span>▣ {file.name}</span><b>{(file.bytes / 1024 / 1024).toFixed(1)} MB</b></div>)}{!server.snapshot.artifacts.length&&<div className="empty">No ZIP artifacts found</div>}</section><section className="panel"><h3>Latest Backup Log</h3><p>Read-only output from the most recent reported log</p><div className="terminal">{server.snapshot.logLines.length ? server.snapshot.logLines.map((line,i)=><div key={i}>{line}</div>) : 'No log lines available'}</div></section></div>;
+  return <div className="bottom-grid"><section className="panel"><h3>Recent Backup Artifacts</h3><p>Latest local ZIP files reported by the Agent</p>{server.snapshot.artifacts.map(file=><div className="artifact" key={file.name}><span>▣ {file.name}</span><b>{(file.bytes / 1024 / 1024).toFixed(1)} MB</b></div>)}{!server.snapshot.artifacts.length&&<div className="empty">No ZIP artifacts found</div>}</section><section className="panel"><h3>Latest Backup Log</h3><p>Read-only output from the most recent reported log</p><div className="terminal">{server.snapshot.logLines.length ? server.snapshot.logLines.map((line,i)=><div key={i}>{formatLogLine(line)}</div>) : 'No log lines available'}</div></section></div>;
 }
 export default function MonitorDashboard() {
   const path=usePathname();
@@ -110,7 +128,7 @@ export default function MonitorDashboard() {
       {view==='backup-jobs'&&<><div className="section-head"><div><h2>Scheduled Backup Jobs</h2><p>Read-only; cannot start or stop jobs from this dashboard</p></div></div><JobTable jobs={jobs}/></>}
       {view==='databases'&&<><div className="section-head"><div><h2>Database Backup Health</h2><p>Last reported FULL and LOG backup dates</p></div></div><DatabaseTable databases={databases}/></>}
       {view==='agents'&&<><div className="section-head"><div><h2>Registered Agents</h2><p>Connectivity is inferred from most recent received telemetry</p></div></div><div className="tablewrap"><table><thead><tr><th>AGENT ID</th><th>SERVER</th><th>INSTANCE</th><th>STATUS</th><th>LAST HEARTBEAT</th><th>DISK FREE</th></tr></thead><tbody>{all.map(item=><tr key={item.snapshot.agentId}><td className="name">{item.snapshot.agentId}</td><td>{item.snapshot.serverName}</td><td>{item.snapshot.instance}</td><td><span className={'pill '+(item.online?'good':'bad')}>{item.online?'ONLINE':'OFFLINE'}</span></td><td>{fmt(item.receivedAt)}</td><td>{item.snapshot.diskFreeGB??'—'} GB</td></tr>)}{all.length===0&&<tr><td className="table-empty" colSpan={6}>No agents have sent telemetry yet</td></tr>}</tbody></table></div></>}
-      {view==='events'&&<><div className="section-head"><div><h2>Latest Backup Events</h2><p>Lines from the latest log in the selected Agent snapshot. Persistent event history is not implemented in V0.1.</p></div></div>{server?<div className="panel"><div className="terminal terminal-large">{server.snapshot.logLines.length?server.snapshot.logLines.map((line,i)=><div key={i}>{line}</div>):'No log events available'}</div></div>:<div className="empty">No events available until an Agent reports telemetry.</div>}</>}
+      {view==='events'&&<><div className="section-head"><div><h2>Latest Backup Events</h2><p>Lines from the latest log in the selected Agent snapshot. Persistent event history is not implemented in V0.1.</p></div></div>{server?<div className="panel"><div className="terminal terminal-large">{server.snapshot.logLines.length?server.snapshot.logLines.map((line,i)=><div key={i}>{formatLogLine(line)}</div>):'No log events available'}</div></div>:<div className="empty">No events available until an Agent reports telemetry.</div>}</>}
       <footer>O24 Database Control Center · Read-only telemetry · No task execution · {data?.fetchedAt?fmt(data.fetchedAt):'Waiting for data'}</footer>
     </main>
   </div>;
