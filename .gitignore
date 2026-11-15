@@ -28,3 +28,5 @@ obj/
 *.user
 *.suo
 .DS_Store
+.vercel
+.env*
